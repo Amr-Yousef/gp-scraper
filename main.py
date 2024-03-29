@@ -19,6 +19,21 @@ def write_to_file(filename, data):
     except Exception as e:
         print(f"An error occurred: {e}")
 
+def read_from_file(filename):
+    data = []
+    try:
+        with open(filename, 'r', encoding='utf-8') as file:
+            for line in file:
+                data.append(line.strip())  # Removing leading/trailing whitespaces and newline characters
+        print(f"Data read from '{filename}'.")
+        return data
+    except FileNotFoundError:
+        print(f"Error: File '{filename}' not found.")
+        return []
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return []
+
 
 def get_links_from_html(soup, prefix):
     links = []
@@ -42,8 +57,8 @@ def soupify(html):
     return BeautifulSoup(html, 'html.parser')
 
 
-def main():
-    lvl_1 = ['moreclasses', 'products', 'Brands'] # Case sensitive
+def level_1_links():
+    lvl_1 = ['moreclasses', 'products', 'Brands']  # Case sensitive
     lvl_1_dict = {
         'moreclasses': 'Class',
         'products': 'product',
@@ -68,6 +83,13 @@ def main():
                     write_to_file(f"{lvl}.txt", all_links)
                     break
             page += 1
+
+
+def main():
+    # level_1_links()
+    links = read_from_file('Brands.txt')
+    print(len(links))
+
 
 
 if __name__ == "__main__":
