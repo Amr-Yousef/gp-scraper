@@ -1,6 +1,10 @@
 from func import write_to_file, read_from_file, request_url
 from bs4 import BeautifulSoup
+from tqdm import tqdm
+import re
 import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
+from math import ceil
 
 
 def get_links_from_html(soup, prefix):
@@ -10,8 +14,15 @@ def get_links_from_html(soup, prefix):
         href = a_tag.get('href')
         if href and f'{prefix}/' in href and href not in links:
             links.append(href)
-            print(f"Link found: {href}")
     return links
+
+
+def get_results_number(soup):
+    if not soup:
+        return 0
+    results = soup.find(class_='rtsTxt').get_text(strip=True)
+    number = re.findall(r'\d+', results)
+    return number[0] if number else 0
 
 
 def soupify(html):
@@ -54,11 +65,40 @@ def level_2_links():
                         all_links.append(e)
             update_progress()
 
-    write_to_file(f"Brands_companies.txt", all_links)
+    write_to_file(f"oops.txt", all_links)
+
+
+def level_2_links_classes():
+    def classes_process_link(link):
+        url = f"https://140online.com/{link}"
+        html = soupify(request_url(url))
+        results_no = get_results_number(html)
+        pages_no = ceil(int(results_no) / 20)
+        print(f"Processing {link} with {results_no} results and {pages_no} pages.")
+        classes_links_set = set()  # Initialize a set to store unique links
+        for page in range(1, pages_no + 1):
+            current_url = f"https://140online.com/class/pages/{link[6:]}/{page}"
+            current_html = soupify(request_url(current_url))
+            found_links = get_links_from_html(current_html, "company")
+            if found_links:
+                classes_links_set.update(found_links)  # Add unique links to the set
+        print(f"Found {len(classes_links_set)} links for {link}. Done.")
+        return classes_links_set
+
+    links = read_from_file('moreclasses.txt')
+    all_links_set = set()  # Initialize an empty set to store unique links
+    with ThreadPoolExecutor() as executor:
+        with tqdm(total=len(links), desc="Processing Links") as pbar:
+            for found_links_set in executor.map(classes_process_link, links):
+                pbar.update(1)  # Update progress bar after processing each link
+                all_links_set.update(found_links_set)  # Add unique links from each thread
+    return list(all_links_set)  # Convert the set back to a list
 
 
 def main():
-    level_2_links()
+    links = level_2_links_classes()
+    print(f"Total links: {len(links)}")
+    write_to_file('classes_companies.txt', links)
 
 
 if __name__ == "__main__":
